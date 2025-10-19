@@ -45,7 +45,7 @@ pokemon-sprint-generator/
 └── README.md
 ```
 
-## 🚀 Running the Demo Locally
+## Running the Demo Locally
 
 1. **Clone the repository**
 
