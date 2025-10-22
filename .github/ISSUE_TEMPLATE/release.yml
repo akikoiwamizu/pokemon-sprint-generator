@@ -1,0 +1,35 @@
+name: Release tracking
+description: Use this template to prepare a new release
+title: "Release v0.0 – Short description"
+body:
+  - type: input
+    id: targetdate
+    attributes:
+      label: Target date
+      placeholder: YYYY-MM-DD
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone
+      placeholder: v0.0
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals
+      description: Outcomes for this release
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Checklist
+      value: |
+        - [ ] All milestone issues closed
+        - [ ] README and badges updated
+        - [ ] CHANGELOG updated by Release Please or manual notes ready
+        - [ ] Tag created and pushed
+        - [ ] GitHub Release published
+        - [ ] Milestone closed
+  - type: textarea
+    id: links
+    attributes:
+      label: Linked issues and PRs
+      description: Add references to scope
