@@ -9,5 +9,8 @@ window.firebaseConfig = {
   appId: "YOUR_APP_ID",
 };
 
-// Demo flags: keep writes disabled in the public demo.
-window.demo = { allowWrites: false };
+// Keep the public demo read-only
+window.demo = {
+  allowWrites: false,
+  useFirebase: false,
+};

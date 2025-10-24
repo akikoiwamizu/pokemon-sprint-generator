@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pokémon Sprint Generator</title>
+
+    <!-- Load config.js (contains firebaseConfig and window.demo settings) -->
+    <script src="config.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
+
+    <style>
+      @keyframes silhouetteReveal {
+        0% {
+          filter: brightness(0) contrast(100%);
+          transform: scale(1);
+        }
+        60% {
+          filter: brightness(0) contrast(100%);
+          transform: scale(1.05);
+        }
+        100% {
+          filter: brightness(1) contrast(100%);
+          transform: scale(1);
+        }
+      }
+
+      .pokemon-silhouette {
+        filter: brightness(0) contrast(100%);
+      }
+
+      .pokemon-reveal {
+        animation: silhouetteReveal 1.5s ease-out;
+      }
+
+      .type-badge {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      /* Pokemon type colors */
+      .type-normal {
+        background: #a8a878;
+        color: white;
+      }
+      .type-fire {
+        background: #f08030;
+        color: white;
+      }
+      .type-water {
+        background: #6890f0;
+        color: white;
+      }
+      .type-electric {
+        background: #f8d030;
+        color: black;
+      }
+      .type-grass {
+        background: #78c850;
+        color: white;
+      }
+      .type-ice {
+        background: #98d8d8;
+        color: black;
+      }
+      .type-fighting {
+        background: #c03028;
+        color: white;
+      }
+      .type-poison {
+        background: #a040a0;
+        color: white;
+      }
+      .type-ground {
+        background: #e0c068;
+        color: black;
+      }
+      .type-flying {
+        background: #a890f0;
+        color: white;
+      }
+      .type-psychic {
+        background: #f85888;
+        color: white;
+      }
+      .type-bug {
+        background: #a8b820;
+        color: white;
+      }
+      .type-rock {
+        background: #b8a038;
+        color: white;
+      }
+      .type-ghost {
+        background: #705898;
+        color: white;
+      }
+      .type-dragon {
+        background: #7038f8;
+        color: white;
+      }
+      .type-dark {
+        background: #705848;
+        color: white;
+      }
+      .type-steel {
+        background: #b8b8d0;
+        color: black;
+      }
+      .type-fairy {
+        background: #ee99ac;
+        color: black;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, useRef } = React;
+
+      // UPDATE: Configure & Initialize Firebase
+      // Demo mode pulls in static json files
+      let db = null;
+
+      if (window.demo?.useFirebase && window.firebaseConfig) {
+        firebase.initializeApp(window.firebaseConfig);
+        db = firebase.firestore();
+      }
+
+      const PokemonSprintGenerator = () => {
+        const [teams, setTeams] = useState([]);
+        const [selectedTeam, setSelectedTeam] = useState("");
+        const [newTeamName, setNewTeamName] = useState("");
+        const [allPokemon, setAllPokemon] = useState([]);
+        const [filteredPokemon, setFilteredPokemon] = useState([]);
+        const [sprintHistory, setSprintHistory] = useState([]);
+        const [selectedPokemon, setSelectedPokemon] = useState(null);
+        const [isRevealing, setIsRevealing] = useState(false);
+        const [loading, setLoading] = useState(true);
+        const [filters, setFilters] = useState({
+          generation: "all",
+          types: [],
+          excludeUsed: true,
+          legendary: false,
+          mythical: false,
+        });
+        const [availableTypes, setAvailableTypes] = useState([]);
+        const [generations] = useState([
+          { value: "all", label: "All Generations" },
+          { value: "1", label: "Gen I (Kanto)" },
+          { value: "2", label: "Gen II (Johto)" },
+          { value: "3", label: "Gen III (Hoenn)" },
+          { value: "4", label: "Gen IV (Sinnoh)" },
+          { value: "5", label: "Gen V (Unova)" },
+          { value: "6", label: "Gen VI (Kalos)" },
+          { value: "7", label: "Gen VII (Alola)" },
+          { value: "8", label: "Gen VIII (Galar)" },
+          { value: "9", label: "Gen IX (Paldea)" },
+        ]);
+
+        // Manual Add Pokemon states
+        const [showManualAdd, setShowManualAdd] = useState(false);
+        const [manualAddSearch, setManualAddSearch] = useState("");
+        const [searchResults, setSearchResults] = useState([]);
+        const [selectedForManualAdd, setSelectedForManualAdd] = useState(null);
+        const [manualAddDate, setManualAddDate] = useState("");
+
+        // UPDATE: Load teams from Firestore
+        useEffect(() => {
+          // Check if Firebase is enabled via config.js
+          if (window.demo?.useFirebase && db) {
+            // Realtime Firestore version (disabled by default in public demo)
+            const unsubscribe = db
+              .collection("teams")
+              .orderBy("name")
+              .onSnapshot((snapshot) => {
+                const teamData = snapshot.docs.map((doc) => ({
+                  id: doc.id,
+                  ...doc.data(),
+                }));
+                setTeams(teamData);
+              });
+            return () => unsubscribe();
+          } else {
+            // Static JSON fallback (used in demo mode)
+            async function loadTeams() {
+              try {
+                const res = await fetch("data/teams.json");
+                const data = await res.json();
+                setTeams(data);
+              } catch (err) {
+                console.error("Failed to load teams.json", err);
+              }
+            }
+            loadTeams();
+          }
+        }, []);
+
+        // UPDATE: Load sprint history from Firestore
+        useEffect(() => {
+          if (window.demo?.useFirebase && db) {
+            // Realtime Firestore version (disabled by default in public demo)
+            const unsubscribe = db
+              .collection("sprintHistory")
+              .orderBy("selectedAt", "desc")
+              .onSnapshot((snapshot) => {
+                const historyData = snapshot.docs
+                  .map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                  }))
+                  // Filter out entries that don't have a proper timestamp yet (avoid showing incomplete entries)
+                  .filter((entry) => {
+                    // Only show entries that have a valid timestamp or are manually added with custom dates
+                    if (entry.selectedAt && entry.selectedAt.toDate) {
+                      return true; // Has proper Firestore timestamp
+                    }
+                    if (entry.isManuallyAdded && entry.selectedAt) {
+                      return true; // Manual entries with custom dates
+                    }
+                    return false; // Filter out incomplete entries
+                  });
+                setSprintHistory(sprintData);
+              });
+            return () => unsubscribe();
+          } else {
+            // Static JSON fallback (used in demo mode)
+            async function loadSprints() {
+              try {
+                const res = await fetch("data/sprint_history.json");
+                const data = await res.json();
+                setSprintHistory(data);
+              } catch (err) {
+                console.error("Failed to load sprint_history.json", err);
+              }
+            }
+            loadSprints();
+          }
+        }, []);
+
+        // Fetch all Pokemon data
+        useEffect(() => {
+          fetchAllPokemon();
+        }, []);
+
+        // Apply filters whenever they change
+        useEffect(() => {
+          applyFilters();
+        }, [filters, allPokemon, sprintHistory]);
+
+        // Search for Pokemon when manual add search changes
+        useEffect(() => {
+          if (manualAddSearch.length >= 2) {
+            const usedPokemonIds = sprintHistory.map((h) => h.pokemonId);
+            const results = allPokemon
+              .filter(
+                (pokemon) =>
+                  pokemon.name
+                    .toLowerCase()
+                    .includes(manualAddSearch.toLowerCase()) ||
+                  pokemon.id.toString().includes(manualAddSearch)
+              )
+              // Users cannot manually select used Pokemon
+              .map((pokemon) => ({
+                ...pokemon,
+                isAlreadyUsed: usedPokemonIds.includes(pokemon.id),
+              }))
+              .slice(0, 10);
+            setSearchResults(results);
+          } else {
+            setSearchResults([]);
+          }
+        }, [manualAddSearch, allPokemon, sprintHistory]);
+
+        const fetchAllPokemon = async () => {
+          try {
+            setLoading(true);
+            // Fetch list of all Pokemon (limiting to first 1010 for performance)
+            const response = await fetch(
+              "https://pokeapi.co/api/v2/pokemon?limit=1010"
+            );
+            const data = await response.json();
+
+            // Fetch details for each Pokemon
+            const pokemonDetails = await Promise.all(
+              data.results.map(async (pokemon) => {
+                const detailResponse = await fetch(pokemon.url);
+                const details = await detailResponse.json();
+
+                // Fetch species data for generation and legendary/mythical status
+                const speciesResponse = await fetch(details.species.url);
+                const species = await speciesResponse.json();
+
+                // Determine generation from species data
+                const genMatch =
+                  species.generation.url.match(/generation\/(\d+)/);
+                const generation = genMatch ? genMatch[1] : "1";
+
+                return {
+                  id: details.id,
+                  name: details.name,
+                  sprite: details.sprites.front_default,
+                  types: details.types.map((t) => t.type.name),
+                  generation: generation,
+                  is_legendary: species.is_legendary,
+                  is_mythical: species.is_mythical,
+                  height: details.height,
+                  weight: details.weight,
+                  stats: details.stats.map((s) => ({
+                    name: s.stat.name,
+                    value: s.base_stat,
+                  })),
+                };
+              })
+            );
+
+            setAllPokemon(pokemonDetails);
+
+            // Extract unique types
+            const types = new Set();
+            pokemonDetails.forEach((p) => p.types.forEach((t) => types.add(t)));
+            setAvailableTypes(["all", ...Array.from(types).sort()]);
+
+            setLoading(false);
+          } catch (error) {
+            console.error("Error fetching Pokemon:", error);
+            setLoading(false);
+          }
+        };
+
+        const applyFilters = () => {
+          let filtered = [...allPokemon];
+
+          // Filter by generation
+          if (filters.generation !== "all") {
+            filtered = filtered.filter(
+              (p) => p.generation === filters.generation
+            );
+          }
+
+          // Filter by types (if any selected)
+          if (filters.types.length > 0) {
+            filtered = filtered.filter((p) =>
+              filters.types.some((type) => p.types.includes(type))
+            );
+          }
+
+          // Filter special Pokemon
+          if (filters.legendary) {
+            filtered = filtered.filter((p) => p.is_legendary);
+          }
+
+          if (filters.mythical) {
+            filtered = filtered.filter((p) => p.is_mythical);
+          }
+
+          // Exclude already used Pokemon
+          if (filters.excludeUsed) {
+            const usedPokemonIds = sprintHistory.map((h) => h.pokemonId);
+            filtered = filtered.filter((p) => !usedPokemonIds.includes(p.id));
+          }
+
+          setFilteredPokemon(filtered);
+        };
+
+        const createTeam = async () => {
+          if (newTeamName.trim()) {
+            await db.collection("teams").add({
+              name: newTeamName,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+            setNewTeamName("");
+          }
+        };
+
+        const deleteTeam = async (teamId) => {
+          if (confirm("Are you sure you want to delete this team?")) {
+            await db.collection("teams").doc(teamId).delete();
+            if (selectedTeam === teamId) {
+              setSelectedTeam("");
+            }
+          }
+        };
+
+        const selectRandomPokemon = () => {
+          if (filteredPokemon.length === 0 || !selectedTeam) return;
+
+          setIsRevealing(true);
+          const randomIndex = Math.floor(
+            Math.random() * filteredPokemon.length
+          );
+          const pokemon = filteredPokemon[randomIndex];
+
+          // Show silhouette first
+          setSelectedPokemon({ ...pokemon, isSilhouette: true });
+
+          // Reveal after delay (like "Who's that Pokémon?")
+          setTimeout(() => {
+            setSelectedPokemon({ ...pokemon, isSilhouette: false });
+            savePokemonToHistory(pokemon);
+            setIsRevealing(false);
+          }, 1500);
+        };
+
+        const savePokemonToHistory = async (
+          pokemon,
+          customDate = null,
+          isManual = false
+        ) => {
+          const team = teams.find((t) => t.id === selectedTeam);
+          const timestamp = customDate
+            ? firebase.firestore.Timestamp.fromDate(new Date(customDate))
+            : firebase.firestore.FieldValue.serverTimestamp();
+
+          await db.collection("sprintHistory").add({
+            pokemonId: pokemon.id,
+            pokemonName: pokemon.name,
+            pokemonSprite: pokemon.sprite,
+            pokemonTypes: pokemon.types,
+            teamId: selectedTeam,
+            teamName: team?.name || "Unknown Team",
+            selectedAt: timestamp,
+            isManuallyAdded: isManual || false,
+          });
+        };
+
+        const removeFromHistory = async (historyId) => {
+          if (confirm("Remove this Pokémon from sprint history?")) {
+            await db.collection("sprintHistory").doc(historyId).delete();
+          }
+        };
+
+        const toggleType = (type) => {
+          setFilters((prev) => ({
+            ...prev,
+            types: prev.types.includes(type)
+              ? prev.types.filter((t) => t !== type)
+              : [...prev.types, type],
+          }));
+        };
+
+        const handleManualAdd = async () => {
+          if (!selectedForManualAdd || !selectedTeam || !manualAddDate) {
+            alert("Please select a Pokémon, team, and date");
+            return;
+          }
+
+          await savePokemonToHistory(selectedForManualAdd, manualAddDate, true);
+
+          // Reset manual add form
+          setShowManualAdd(false);
+          setManualAddSearch("");
+          setSearchResults([]);
+          setSelectedForManualAdd(null);
+          setManualAddDate("");
+        };
+
+        const getButtonTooltip = () => {
+          if (!selectedTeam) return "Please select a team first";
+          if (filteredPokemon.length === 0)
+            return "No Pokémon match your filters";
+          if (isRevealing) return "Revealing Pokémon...";
+          return "";
+        };
+
+        const formatDate = (timestamp) => {
+          if (!timestamp) return "Unknown";
+          const date = timestamp.toDate
+            ? timestamp.toDate()
+            : new Date(timestamp);
+          return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        };
+
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-6">
+            <div className="max-w-7xl mx-auto">
+              <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
+                🎮 Pokémon Sprint Generator
+              </h1>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Teams Management */}
+                <div
+                  className={`bg-white rounded-lg shadow-lg p-6 ${
+                    !selectedTeam
+                      ? "ring-4 ring-yellow-300 ring-opacity-50"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <span
+                      className={`rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold ${
+                        selectedTeam
+                          ? "bg-green-500 text-white"
+                          : "bg-yellow-500 text-white animate-pulse"
+                      }`}
+                    >
+                      {selectedTeam ? "✓" : "1"}
+                    </span>
+                    <h2 className="text-2xl font-bold text-gray-700">Teams</h2>
+                    {!selectedTeam && (
+                      <span className="text-yellow-600 font-medium text-sm">
+                        (Required)
+                      </span>
+                    )}
+                  </div>
+
+                  {!selectedTeam && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                      <p className="text-yellow-800 text-sm font-medium">
+                        👆 Select or create a team to get started
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="text-gray-600 text-sm mb-4">
+                    {selectedTeam
+                      ? "Team selected! Each team tracks its own Pokémon history."
+                      : "First, select or create a team. Each team tracks its own Pokémon history."}
+                  </p>
+
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                      placeholder="New team name"
+                      className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onKeyPress={(e) => e.key === "Enter" && createTeam()}
+                    />
+                    <button
+                      onClick={createTeam}
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {teams.map((team) => (
+                      <div
+                        key={team.id}
+                        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
+                          selectedTeam === team.id
+                            ? "bg-blue-100 border-2 border-blue-500"
+                            : "bg-gray-50 hover:bg-gray-100"
+                        }`}
+                        onClick={() => setSelectedTeam(team.id)}
+                      >
+                        <span className="font-medium">{team.name}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteTeam(team.id);
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pokemon Selector */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-2xl font-bold mb-4 text-gray-700">
+                    Select Pokémon
+                  </h2>
+
+                  {/* Filters */}
+                  <div className="space-y-3 mb-4">
+                    <select
+                      value={filters.generation}
+                      onChange={(e) =>
+                        setFilters({ ...filters, generation: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {generations.map((gen) => (
+                        <option key={gen.value} value={gen.value}>
+                          {gen.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Type checkboxes */}
+                    <div className="border rounded-lg p-3">
+                      <p className="text-sm font-semibold mb-2">
+                        Pokémon Types:
+                      </p>
+                      <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
+                        {availableTypes
+                          .filter((t) => t !== "all")
+                          .map((type) => (
+                            <label
+                              key={type}
+                              className="flex items-center gap-1 text-sm hover:bg-gray-50 p-1 rounded"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={filters.types.includes(type)}
+                                onChange={() => toggleType(type)}
+                                className="w-3 h-3"
+                              />
+                              <span className="capitalize">{type}</span>
+                            </label>
+                          ))}
+                      </div>
+                      {filters.types.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          Selected: {filters.types.length} type(s)
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={filters.excludeUsed}
+                          onChange={(e) =>
+                            setFilters({
+                              ...filters,
+                              excludeUsed: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4"
+                        />
+                        <span>Exclude used Pokémon</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={filters.legendary}
+                          onChange={(e) =>
+                            setFilters({
+                              ...filters,
+                              legendary: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4"
+                        />
+                        <span>Legendary only</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={filters.mythical}
+                          onChange={(e) =>
+                            setFilters({
+                              ...filters,
+                              mythical: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4"
+                        />
+                        <span>Mythical only</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-gray-600 mb-4">
+                    {loading
+                      ? "Loading..."
+                      : `${filteredPokemon.length} Pokemon available`}
+                  </div>
+
+                  {/* Generate Button */}
+                  <div className="space-y-2">
+                    <button
+                      onClick={selectRandomPokemon}
+                      disabled={
+                        !selectedTeam ||
+                        filteredPokemon.length === 0 ||
+                        isRevealing
+                      }
+                      title={getButtonTooltip()}
+                      className={`w-full py-4 rounded-lg font-bold text-lg transition transform hover:scale-105 ${
+                        !selectedTeam || filteredPokemon.length === 0
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700"
+                      }`}
+                    >
+                      {isRevealing
+                        ? "Who's that Pokémon?"
+                        : "Generate Pokémon!"}
+                    </button>
+                  </div>
+
+                  {/* Selected Pokemon Display */}
+                  {selectedPokemon && (
+                    <div className="mt-6 p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg">
+                      <img
+                        src={selectedPokemon.sprite}
+                        alt={selectedPokemon.name}
+                        className={`w-32 h-32 mx-auto ${
+                          selectedPokemon.isSilhouette
+                            ? "pokemon-silhouette"
+                            : "pokemon-reveal"
+                        }`}
+                      />
+                      {!selectedPokemon.isSilhouette ? (
+                        <>
+                          <h3 className="text-xl font-bold text-center capitalize mt-2">
+                            {selectedPokemon.name}
+                          </h3>
+                          <div className="flex justify-center gap-2 mt-2">
+                            {selectedPokemon.types.map((type) => (
+                              <span
+                                key={type}
+                                className={`type-badge type-${type}`}
+                              >
+                                {type}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="text-center text-sm text-gray-600 mt-2">
+                            #{String(selectedPokemon.id).padStart(3, "0")} • Gen{" "}
+                            {selectedPokemon.generation}
+                          </div>
+                        </>
+                      ) : (
+                        <h3 className="text-xl font-bold text-center mt-2">
+                          ???
+                        </h3>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sprint History */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-gray-700">
+                      Sprint History
+                    </h2>
+                    {/* Manual Add Button */}
+                    <button
+                      onClick={() => setShowManualAdd(true)}
+                      disabled={!selectedTeam}
+                      className="px-3 py-1 text-sm rounded-lg font-medium transition border-2 border-blue-500 text-blue-600 hover:bg-blue-50 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
+                      title={
+                        !selectedTeam
+                          ? "Please select a team first"
+                          : "Add a Pokémon from before this tool existed"
+                      }
+                    >
+                      📝 Add Manually
+                    </button>
+                  </div>
+
+                  <p className="text-gray-600 text-sm mb-4">
+                    Your team's Pokémon sprint history. Each generated Pokémon
+                    becomes your sprint mascot!
+                  </p>
+
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {sprintHistory.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">
+                        No sprints yet
+                      </p>
+                    ) : (
+                      sprintHistory.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={entry.pokemonSprite}
+                                alt={entry.pokemonName}
+                                className="w-12 h-12"
+                              />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold capitalize">
+                                    {entry.pokemonName}
+                                  </p>
+                                  {entry.isManuallyAdded && (
+                                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                      📝
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-600">
+                                  {entry.teamName}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {formatDate(entry.selectedAt)}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeFromHistory(entry.id)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats Dashboard */}
+              <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
+                <h2 className="text-2xl font-bold mb-4 text-gray-700">
+                  Statistics
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-blue-600">
+                      {teams.length}
+                    </p>
+                    <p className="text-gray-600">Teams</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-green-600">
+                      {sprintHistory.length}
+                    </p>
+                    <p className="text-gray-600">Total Sprints</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-purple-600">
+                      {filteredPokemon.length}
+                    </p>
+                    <p className="text-gray-600">Matching Filters</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-orange-600">
+                      {
+                        allPokemon.filter(
+                          (p) =>
+                            !sprintHistory.some((h) => h.pokemonId === p.id)
+                        ).length
+                      }
+                    </p>
+                    <p className="text-gray-600">Remaining Pokémon</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Manual Add Modal */}
+            {showManualAdd && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-800">
+                      Manually Add Pokémon
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setShowManualAdd(false);
+                        setManualAddSearch("");
+                        setSearchResults([]);
+                        setSelectedForManualAdd(null);
+                        setManualAddDate("");
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Search Pokemon */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Search Pokémon
+                      </label>
+                      <input
+                        type="text"
+                        value={manualAddSearch}
+                        onChange={(e) => setManualAddSearch(e.target.value)}
+                        placeholder="Type Pokémon name or number..."
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Search Results */}
+                    {searchResults.length > 0 && (
+                      <div className="max-h-48 overflow-y-auto border rounded-lg">
+                        {searchResults.map((pokemon) => (
+                          <div
+                            key={pokemon.id}
+                            className={`flex items-center gap-3 p-3 ${
+                              pokemon.isAlreadyUsed
+                                ? "bg-gray-100 opacity-75 cursor-not-allowed"
+                                : `hover:bg-gray-50 cursor-pointer ${
+                                    selectedForManualAdd?.id === pokemon.id
+                                      ? "bg-blue-50 border-l-4 border-blue-500"
+                                      : ""
+                                  }`
+                            }`}
+                            onClick={() =>
+                              !pokemon.isAlreadyUsed &&
+                              setSelectedForManualAdd(pokemon)
+                            }
+                            title={
+                              pokemon.isAlreadyUsed
+                                ? "This Pokemon has already been used in a sprint"
+                                : ""
+                            }
+                          >
+                            <img
+                              src={pokemon.sprite}
+                              alt={pokemon.name}
+                              className={`w-12 h-12 ${
+                                pokemon.isAlreadyUsed ? "grayscale" : ""
+                              }`}
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p
+                                  className={`font-medium capitalize ${
+                                    pokemon.isAlreadyUsed ? "text-gray-500" : ""
+                                  }`}
+                                >
+                                  {pokemon.name}
+                                </p>
+                                {pokemon.isAlreadyUsed && (
+                                  <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">
+                                    Already Used
+                                  </span>
+                                )}
+                              </div>
+                              <p
+                                className={`text-sm ${
+                                  pokemon.isAlreadyUsed
+                                    ? "text-gray-400"
+                                    : "text-gray-600"
+                                }`}
+                              >
+                                #{String(pokemon.id).padStart(3, "0")} • Gen{" "}
+                                {pokemon.generation}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Selected Pokemon Preview */}
+                    {selectedForManualAdd && (
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm font-medium text-blue-800 mb-2">
+                          Selected:
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={selectedForManualAdd.sprite}
+                            alt={selectedForManualAdd.name}
+                            className="w-16 h-16"
+                          />
+                          <div>
+                            <h4 className="font-bold capitalize text-lg">
+                              {selectedForManualAdd.name}
+                            </h4>
+                            <div className="flex gap-1 mt-1">
+                              {selectedForManualAdd.types.map((type) => (
+                                <span
+                                  key={type}
+                                  className={`type-badge type-${type}`}
+                                >
+                                  {type}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              #
+                              {String(selectedForManualAdd.id).padStart(3, "0")}{" "}
+                              • Gen {selectedForManualAdd.generation}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Date Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sprint Date
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={manualAddDate}
+                        onChange={(e) => setManualAddDate(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        When was this Pokémon used for a sprint?
+                      </p>
+                    </div>
+
+                    {/* Team Selection Display */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Team
+                      </label>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="font-medium">
+                          {selectedTeam
+                            ? teams.find((t) => t.id === selectedTeam)?.name
+                            : "No team selected"}
+                        </p>
+                        {!selectedTeam && (
+                          <p className="text-sm text-red-600">
+                            Please select a team first
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        onClick={() => {
+                          setShowManualAdd(false);
+                          setManualAddSearch("");
+                          setSearchResults([]);
+                          setSelectedForManualAdd(null);
+                          setManualAddDate("");
+                        }}
+                        className="flex-1 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleManualAdd}
+                        disabled={
+                          !selectedForManualAdd ||
+                          !selectedTeam ||
+                          !manualAddDate
+                        }
+                        className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        Add to History
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      ReactDOM.render(
+        <PokemonSprintGenerator />,
+        document.getElementById("root")
+      );
+    </script>
+  </body>
+</html>
