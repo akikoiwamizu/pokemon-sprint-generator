@@ -1,2 +1,3 @@
 public/config.js
 .DS_Store
+*.log
