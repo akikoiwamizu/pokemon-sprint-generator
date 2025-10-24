@@ -1,7 +1,8 @@
 {
   "packages": {
     ".": {
-      "component": "pokemon-sprint-generator"
+      "component": "pokemon-sprint-generator",
+      "version": "0.9.0"
     }
   }
 }
