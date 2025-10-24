@@ -1,7 +1,6 @@
 # Pokémon Sprint Generator (Public Demo)
 
-![Release](https://img.shields.io/github/v/release/akikoiwamizu/pokemon-sprint-generator)
-![Build](https://img.shields.io/github/actions/workflow/status/akikoiwamizu/pokemon-sprint-generator/release-please.yml)
+![Release](https://img.shields.io/github/v/release/akikoiwamizu/pokemon-sprint-generator?sort=semver)
 ![Project Status](https://img.shields.io/badge/status-public%20launch%20prep-blue)
 
 A public, read-only version of the internal **Pokémon Sprint Generator** tool I originally built for sprint planning. This demo shows how a playful internal app can be safely shared publicly by removing all write operations, re-scoping authentication, and adapting Firebase configuration for secure hosting.
