@@ -1,0 +1,7 @@
+{
+  "packages": {
+    ".": {
+      "component": "pokemon-sprint-generator"
+    }
+  }
+}
