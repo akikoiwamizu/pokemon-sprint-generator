@@ -90,6 +90,12 @@ To re-enable write actions in your own fork:
 3. Replace the `firestore.rules` file with one that allows writes.
 4. Set `window.demo.allowWrites = true` in `config.js`.
 
+To apply the Firestore security rules in this project to your live Firebase instance:
+
+```bash
+firebase deploy --only firestore
+```
+
 ## Why a Public Demo
 
 Moving this project from private → public was an intentional design exercise in:
