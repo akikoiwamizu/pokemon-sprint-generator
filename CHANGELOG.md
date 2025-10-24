@@ -2,8 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
----
-
 ## [v0.10] - 2025-10-24
 
 ### Highlights
@@ -24,8 +22,6 @@ All notable changes to this project will be documented in this file.
 - Firestore security rules updated to restrict all writes by default (#29)
 - `index.html` logic now loads local data and PokéAPI for demo mode (#37)
 - Firebase hooks and writes are gated behind config flag (#37)
-
----
 
 ## [0.9.0] - 2025-10-19
 
