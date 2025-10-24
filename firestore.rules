@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public demo is read-only everywhere
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
