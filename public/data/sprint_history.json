@@ -1,0 +1,72 @@
+[
+  {
+    "teamId": "team_rocket_001",
+    "teamName": "Team Rocket",
+    "pokemonId": 94,
+    "pokemonName": "gengar",
+    "pokemonSprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png",
+    "pokemonTypes": ["ghost", "poison"],
+    "selectedAt": "2025-10-01T12:30:00.000Z",
+    "isManuallyAdded": false
+  },
+  {
+    "teamId": "team_rocket_001",
+    "teamName": "Team Rocket",
+    "pokemonId": 24,
+    "pokemonName": "arbok",
+    "pokemonSprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/24.png",
+    "pokemonTypes": ["poison"],
+    "selectedAt": "2025-10-08T15:45:00.000Z",
+    "isManuallyAdded": true
+  },
+  {
+    "teamId": "team_valor_002",
+    "teamName": "Team Valor",
+    "pokemonId": 6,
+    "pokemonName": "charizard",
+    "pokemonSprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png",
+    "pokemonTypes": ["fire", "flying"],
+    "selectedAt": "2025-09-20T11:00:00.000Z",
+    "isManuallyAdded": false
+  },
+  {
+    "teamId": "team_valor_002",
+    "teamName": "Team Valor",
+    "pokemonId": 59,
+    "pokemonName": "arcanine",
+    "pokemonSprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png",
+    "pokemonTypes": ["fire"],
+    "selectedAt": "2025-09-28T17:15:00.000Z",
+    "isManuallyAdded": true
+  },
+  {
+    "teamId": "team_instinct_003",
+    "teamName": "Team Instinct",
+    "pokemonId": 25,
+    "pokemonName": "pikachu",
+    "pokemonSprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png",
+    "pokemonTypes": ["electric"],
+    "selectedAt": "2025-09-18T09:30:00.000Z",
+    "isManuallyAdded": false
+  },
+  {
+    "teamId": "team_mystic_004",
+    "teamName": "Team Mystic",
+    "pokemonId": 131,
+    "pokemonName": "lapras",
+    "pokemonSprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/131.png",
+    "pokemonTypes": ["water", "ice"],
+    "selectedAt": "2025-10-05T08:10:00.000Z",
+    "isManuallyAdded": false
+  },
+  {
+    "teamId": "team_mystic_004",
+    "teamName": "Team Mystic",
+    "pokemonId": 150,
+    "pokemonName": "mewtwo",
+    "pokemonSprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png",
+    "pokemonTypes": ["psychic"],
+    "selectedAt": "2025-10-10T18:20:00.000Z",
+    "isManuallyAdded": true
+  }
+]

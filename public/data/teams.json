@@ -1,0 +1,22 @@
+[
+  {
+    "id": "team_rocket_001",
+    "name": "Team Rocket",
+    "createdAt": "2025-09-01T09:00:00.000Z"
+  },
+  {
+    "id": "team_valor_002",
+    "name": "Team Valor",
+    "createdAt": "2025-09-05T10:30:00.000Z"
+  },
+  {
+    "id": "team_instinct_003",
+    "name": "Team Instinct",
+    "createdAt": "2025-09-10T14:15:00.000Z"
+  },
+  {
+    "id": "team_mystic_004",
+    "name": "Team Mystic",
+    "createdAt": "2025-09-15T08:45:00.000Z"
+  }
+]
