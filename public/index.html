@@ -376,6 +376,11 @@
         };
 
         const createTeam = async () => {
+          if (!window.demo?.allowWrites) {
+            alert("This is a read-only demo. Writing is disabled.");
+            return;
+          }
+
           if (newTeamName.trim()) {
             await db.collection("teams").add({
               name: newTeamName,
@@ -386,6 +391,11 @@
         };
 
         const deleteTeam = async (teamId) => {
+          if (!window.demo?.allowWrites) {
+            alert("This is a read-only demo. Writing is disabled.");
+            return;
+          }
+
           if (confirm("Are you sure you want to delete this team?")) {
             await db.collection("teams").doc(teamId).delete();
             if (selectedTeam === teamId) {
@@ -419,6 +429,11 @@
           customDate = null,
           isManual = false
         ) => {
+          if (!window.demo?.allowWrites) {
+            console.warn("This is a read-only demo. Writing is disabled.");
+            return;
+          }
+
           const team = teams.find((t) => t.id === selectedTeam);
           const timestamp = customDate
             ? firebase.firestore.Timestamp.fromDate(new Date(customDate))
@@ -437,6 +452,11 @@
         };
 
         const removeFromHistory = async (historyId) => {
+          if (!window.demo?.allowWrites) {
+            alert("This is a read-only demo. Writing is disabled.");
+            return;
+          }
+
           if (confirm("Remove this Pokémon from sprint history?")) {
             await db.collection("sprintHistory").doc(historyId).delete();
           }
@@ -452,6 +472,11 @@
         };
 
         const handleManualAdd = async () => {
+          if (!window.demo?.allowWrites) {
+            alert("This is a read-only demo. Writing is disabled.");
+            return;
+          }
+
           if (!selectedForManualAdd || !selectedTeam || !manualAddDate) {
             alert("Please select a Pokémon, team, and date");
             return;
