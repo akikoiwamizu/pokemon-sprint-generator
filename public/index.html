@@ -18,6 +18,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
 
     <style>
+      .demo-banner {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        width: 100%;
+        box-sizing: border-box;
+        background: #fcc2b3;
+        color: #8a3b27;
+        border-bottom: 1px solid #fed8ce;
+        padding: 10px 16px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.3;
+      }
+
+      body {
+        margin: 0;
+        padding-top: 35px; /* prevents content from hiding behind fixed banner */
+      }
+
       @keyframes silhouetteReveal {
         0% {
           filter: brightness(0) contrast(100%);
@@ -126,6 +149,10 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <div class="demo-banner" role="status" aria-live="polite">
+      Read-only demo. Write actions are disabled in this public version.
+    </div>
 
     <script type="text/babel">
       const { useState, useEffect, useRef } = React;
@@ -377,7 +404,7 @@
 
         const createTeam = async () => {
           if (!window.demo?.allowWrites) {
-            alert("This is a read-only demo. Writing is disabled.");
+            alert("This is a read-only demo. Creating teams is disabled.");
             return;
           }
 
@@ -392,7 +419,7 @@
 
         const deleteTeam = async (teamId) => {
           if (!window.demo?.allowWrites) {
-            alert("This is a read-only demo. Writing is disabled.");
+            alert("This is a read-only demo. Deleting teams is disabled.");
             return;
           }
 
@@ -430,7 +457,7 @@
           isManual = false
         ) => {
           if (!window.demo?.allowWrites) {
-            console.warn("This is a read-only demo. Writing is disabled.");
+            console.warn("This is a read-only demo. Saving is disabled.");
             return;
           }
 
@@ -453,7 +480,7 @@
 
         const removeFromHistory = async (historyId) => {
           if (!window.demo?.allowWrites) {
-            alert("This is a read-only demo. Writing is disabled.");
+            alert("This is a read-only demo. Deleting is disabled.");
             return;
           }
 
@@ -473,7 +500,7 @@
 
         const handleManualAdd = async () => {
           if (!window.demo?.allowWrites) {
-            alert("This is a read-only demo. Writing is disabled.");
+            alert("This is a read-only demo. Saving is disabled.");
             return;
           }
 
