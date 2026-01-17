@@ -18,18 +18,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
 
     <style>
+      :root {
+        --demo-banner-height: 44px;
+      }
+
       .demo-banner {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         z-index: 9999;
-        width: 100%;
+
+        height: var(--demo-banner-height);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        padding: 0 16px;
         box-sizing: border-box;
+
         background: #fcc2b3;
         color: #8a3b27;
         border-bottom: 1px solid #fed8ce;
-        padding: 10px 16px;
+
         text-align: center;
         font-size: 14px;
         font-weight: 500;
@@ -38,7 +49,11 @@
 
       body {
         margin: 0;
-        padding-top: 35px; /* prevents content from hiding behind fixed banner */
+        padding-top: 0;
+      }
+
+      #root {
+        padding-top: var(--demo-banner-height);
       }
 
       @keyframes silhouetteReveal {
@@ -148,11 +163,11 @@
     </style>
   </head>
   <body>
-    <div id="root"></div>
-
     <div class="demo-banner" role="status" aria-live="polite">
       Read-only demo. Write actions are disabled in this public version.
     </div>
+
+    <div id="root"></div>
 
     <script type="text/babel">
       const { useState, useEffect, useRef } = React;
