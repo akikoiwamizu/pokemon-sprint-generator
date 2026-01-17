@@ -60,9 +60,6 @@ This repo runs as a static site. Demo mode uses PokéAPI plus local JSON data un
    cp public/config.example.js public/config.js
    ```
 
-   Edit `public/config.js` with your Firebase web app credentials  
-   (or leave the placeholders to run in demo mode).
-
 3. **Serve locally**
 
    ```bash
