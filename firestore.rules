@@ -1,3 +1,5 @@
+// Default rules for the public demo: read-only everywhere
+// Forks that enable Firebase persistence should copy firestore.rules.example into firestore.rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
