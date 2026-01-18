@@ -1,0 +1,82 @@
+// Firestore Security Rules for Pokemon Sprint Name Generator
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================
+    // Teams
+    // =========================
+    match /teams/{teamId} {
+
+      // Required for: team list to load in Team Mode
+      allow read: if true;
+
+      // Required for: creating new teams in Team Mode
+      // Also validates shape and basic constraints
+      allow create: if request.resource.data.keys().hasAll(['name', 'createdAt']) &&
+                    request.resource.data.keys().hasOnly(['name', 'createdAt']) &&
+                    request.resource.data.name is string &&
+                    request.resource.data.name.size() > 0 &&
+                    request.resource.data.name.size() <= 50 &&
+                    // Enforces serverTimestamp() usage for createdAt
+                    request.resource.data.createdAt == request.time;
+
+      // Required for: deleting teams (if your UI supports it)
+      allow delete: if true;
+
+      // Required for: Renaming teams
+      // Important: only allow changing the 'name' field
+      // We keep createdAt immutable and prevent adding extra fields
+      allow update: if
+        request.resource.data.keys().hasOnly(['name', 'createdAt']) &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['name']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 50;
+    }
+
+    // =========================
+    // Sprint History
+    // =========================
+    match /sprintHistory/{historyId} {
+
+      // Required for: displaying sprint history in Team Mode
+      allow read: if true;
+
+      // Required for: saving generated sprint history entries
+      // The app can keep storing teamName for legacy/fallback, but UI should display via teamId lookup
+      // These rules do not enforce unique team names,
+      allow create: if request.resource.data.keys().hasAll([
+                      'pokemonId', 'pokemonName', 'pokemonSprite',
+                      'pokemonTypes', 'teamId', 'teamName', 'selectedAt'
+                    ]) &&
+                    request.resource.data.pokemonId is int &&
+                    request.resource.data.pokemonId > 0 &&
+                    request.resource.data.pokemonName is string &&
+                    request.resource.data.pokemonName.size() > 0 &&
+                    request.resource.data.pokemonSprite is string &&
+                    request.resource.data.pokemonTypes is list &&
+                    request.resource.data.teamId is string &&
+                    request.resource.data.teamName is string &&
+                    // Allow both server timestamp and manual timestamps
+                    (request.resource.data.selectedAt == request.time ||
+                     request.resource.data.selectedAt is timestamp);
+
+      // Optional: allow delete if your private app supports removing history entries
+      // If you want history to be immutable, set delete to false
+      allow delete: if true;
+
+      // Keep history immutable (no edits after creation)
+      allow update: if false;
+    }
+
+    // =========================
+    // Everything else
+    // =========================
+    // Denys access to any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

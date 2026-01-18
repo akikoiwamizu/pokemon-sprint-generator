@@ -39,6 +39,7 @@ pokemon-sprint-generator/
 │   └── pull_request_template.md
 ├── firebase.json
 ├── firestore.rules
+├── firestore.rules.example
 ├── LICENSE
 └── README.md
 ```
@@ -108,22 +109,44 @@ If you want internal persistence, connect your fork to Firebase using the follow
    window.demo = { allowWrites: true, useFirebase: true };
    ```
 
-5. Update Firestore rules in your Firebase project to allow authenticated writes you need
+5. Create/Update Firestore rules
 
-6. Deploy your rules (optional, if using this repo’s `firestore.rules` as a starting point):
+This repo includes two rules files:
 
-   ```bash
-   firebase deploy --only firestore
-   ```
+- `firestore.rules` is intentionally read-only everywhere (default for the public demo)
+- `firestore.rules.example` is a starter template for forks that enable persistence
+
+To enable Team Mode writes in your Firebase project:
+
+- Copy `firestore.rules.example` to `firestore.rules`
+- Deploy rules:
+
+  ```bash
+  firebase deploy --only firestore:rules
+  ```
+
+Rule requirements by feature:
+
+- Create team: allow create on `/teams/{teamId}`
+- Rename team: allow update on `/teams/{teamId}` for `teamName` only
+- Save sprint history: allow create on `/sprintHistory/{historyId}`
 
 Example Firestore documents (one possible approach):
 
 ```json
-teams/{teamId} -> { "teamName": "Team Rocket", "createdAt": "2025-10-01T00:00:00Z" }
-sprint_history/{historyId} -> { "teamId": "team-rocket", "sprintName": "gengar", "generatedAt": "2025-11-05T00:00:00Z" }
+teams/{teamId} -> { "name": "Team Rocket", "createdAt": "2025-10-01T00:00:00Z" }
+sprintHistory/{historyId} -> {
+  "pokemonId": 94,
+  "pokemonName": "gengar",
+  "pokemonSprite": "https://...",
+  "pokemonTypes": ["ghost", "poison"],
+  "teamId": "team-rocket",
+  "teamName": "Team Rocket",
+  "selectedAt": "2025-11-05T00:00:00Z"
+}
 ```
 
-## Security notes
+## Security Notes
 
 This public repository is intentionally structured to be safe to publish:
 
@@ -133,15 +156,6 @@ This public repository is intentionally structured to be safe to publish:
 - Demo data lives in static JSON files under `public/data/`
 
 If you enable Firebase in a fork, use least-privilege rules and require authentication for writes.
-
-## Why a Public Demo
-
-Moving this project from private to public was an intentional design exercise focused on:
-
-- Security-conscious publishing (disabling writes, avoiding secrets)
-- Developer onboarding (self-contained local setup)
-- Clear documentation for readers unfamiliar with Firebase
-- Portfolio storytelling that demonstrates open-source release discipline
 
 ## Contributing
 

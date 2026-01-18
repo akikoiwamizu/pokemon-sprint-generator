@@ -172,7 +172,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-      const { useState, useEffect, useRef } = React;
+      const { useState, useEffect, useRef, useMemo } = React;
 
       // UPDATE: Configure & Initialize Firebase
       // Demo mode pulls in static json files
@@ -187,6 +187,10 @@
         const [teams, setTeams] = useState([]);
         const [selectedTeam, setSelectedTeam] = useState("");
         const [newTeamName, setNewTeamName] = useState("");
+        const [editingTeamId, setEditingTeamId] = useState(null);
+        const [editingTeamName, setEditingTeamName] = useState("");
+        const [isRenameSaving, setIsRenameSaving] = useState(false);
+        const [renameError, setRenameError] = useState("");
         const [allPokemon, setAllPokemon] = useState([]);
         const [filteredPokemon, setFilteredPokemon] = useState([]);
         const [sprintHistory, setSprintHistory] = useState([]);
@@ -220,6 +224,19 @@
         const [searchResults, setSearchResults] = useState([]);
         const [selectedForManualAdd, setSelectedForManualAdd] = useState(null);
         const [manualAddDate, setManualAddDate] = useState("");
+
+        const teamNameById = useMemo(() => {
+          const m = new Map();
+          teams.forEach((t) => {
+            m.set(t.id, (t.name || "").trim());
+          });
+          return m;
+        }, [teams]);
+
+        const getTeamNameForHistoryEntry = (entry) => {
+          const fromTeams = entry?.teamId ? teamNameById.get(entry.teamId) : "";
+          return fromTeams || entry?.teamName || "Unknown Team";
+        };
 
         // UPDATE: Load teams from Firestore
         useEffect(() => {
@@ -276,7 +293,7 @@
                     }
                     return false; // Filter out incomplete entries
                   });
-                setSprintHistory(sprintData);
+                setSprintHistory(historyData);
               });
             return () => unsubscribe();
           } else {
@@ -424,19 +441,37 @@
             alert("This is a read-only demo. Creating teams is disabled.");
             return;
           }
-
-          if (newTeamName.trim()) {
-            await db.collection("teams").add({
-              name: newTeamName,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            });
-            setNewTeamName("");
+          if (!db) {
+            alert(
+              "Firebase is not enabled. To create teams, enable Firebase in config.js."
+            );
+            return;
           }
+
+          const trimmed = (newTeamName || "").trim();
+          if (!trimmed) return;
+
+          if (isTeamNameTaken(trimmed)) {
+            alert("That team name is already taken.");
+            return;
+          }
+
+          await db.collection("teams").add({
+            name: trimmed,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+          setNewTeamName("");
         };
 
         const deleteTeam = async (teamId) => {
           if (!window.demo?.allowWrites) {
             alert("This is a read-only demo. Deleting teams is disabled.");
+            return;
+          }
+          if (!db) {
+            alert(
+              "Firebase is not enabled. To delete teams, enable Firebase in config.js."
+            );
             return;
           }
 
@@ -445,6 +480,88 @@
             if (selectedTeam === teamId) {
               setSelectedTeam("");
             }
+          }
+        };
+
+        const normalizeTeamName = (name) => name.trim().toLowerCase();
+
+        const isTeamNameTaken = (name, excludeTeamId = null) => {
+          const normalized = normalizeTeamName(name);
+          if (!normalized) return false;
+          return teams.some(
+            (t) =>
+              t.id !== excludeTeamId &&
+              normalizeTeamName(t.name || "") === normalized
+          );
+        };
+
+        const startRenamingTeam = (team) => {
+          if (!window.demo?.allowWrites) {
+            alert("This is a read-only demo. Renaming teams is disabled.");
+            return;
+          }
+          if (!db) {
+            alert(
+              "Firebase is not enabled. To rename teams, enable Firebase in config.js."
+            );
+            return;
+          }
+          setEditingTeamId(team.id);
+          setEditingTeamName(team.name || "");
+          setRenameError("");
+          setIsRenameSaving(false);
+          setSelectedTeam(team.id);
+        };
+
+        const cancelRenamingTeam = () => {
+          setEditingTeamId(null);
+          setEditingTeamName("");
+          setRenameError("");
+          setIsRenameSaving(false);
+        };
+
+        const saveRenamedTeam = async () => {
+          if (!window.demo?.allowWrites) {
+            alert("This is a read-only demo. Renaming teams is disabled.");
+            return;
+          }
+          if (!db) {
+            alert(
+              "Firebase is not enabled. To rename teams, enable Firebase in config.js."
+            );
+            return;
+          }
+          if (!editingTeamId) return;
+
+          const trimmed = (editingTeamName || "").trim();
+          if (!trimmed) return;
+          if (isTeamNameTaken(trimmed, editingTeamId)) return;
+
+          setIsRenameSaving(true);
+          setRenameError("");
+          try {
+            await db.collection("teams").doc(editingTeamId).update({
+              name: trimmed,
+            });
+            cancelRenamingTeam();
+          } catch (err) {
+            console.error("Rename failed:", err);
+            const code = err?.code || "";
+            if (code === "permission-denied") {
+              const msg = err?.message ? String(err.message) : "";
+              const snippet = msg ? msg.slice(0, 160) : "";
+              setRenameError(
+                `Rename failed: Firestore rules blocked this update (permission-denied).${
+                  snippet ? ` ${snippet}` : ""
+                }`
+              );
+            } else {
+              setRenameError(
+                `Rename failed: ${err?.message || "unknown error"}`
+              );
+            }
+          } finally {
+            setIsRenameSaving(false);
           }
         };
 
@@ -474,10 +591,18 @@
           isManual = false
         ) => {
           if (!window.demo?.allowWrites) {
-            console.warn("This is a read-only demo. Saving is disabled.");
+            console.warn(
+              "This is a read-only demo. Saving Pokémon is disabled."
+            );
             return;
           }
 
+          if (!db) {
+            console.warn(
+              "Firebase is not enabled. Saving Pokémon is disabled."
+            );
+            return;
+          }
           const team = teams.find((t) => t.id === selectedTeam);
           const timestamp = customDate
             ? firebase.firestore.Timestamp.fromDate(new Date(customDate))
@@ -497,10 +622,14 @@
 
         const removeFromHistory = async (historyId) => {
           if (!window.demo?.allowWrites) {
-            alert("This is a read-only demo. Deleting is disabled.");
+            alert("This is a read-only demo. Deleting Pokémon is disabled.");
             return;
           }
 
+          if (!db) {
+            alert("Firebase is not enabled. Deleting Pokémon is disabled.");
+            return;
+          }
           if (confirm("Remove this Pokémon from sprint history?")) {
             await db.collection("sprintHistory").doc(historyId).delete();
           }
@@ -517,10 +646,14 @@
 
         const handleManualAdd = async () => {
           if (!window.demo?.allowWrites) {
-            alert("This is a read-only demo. Saving is disabled.");
+            alert("This is a read-only demo. Saving Pokémon is disabled.");
             return;
           }
 
+          if (!db) {
+            alert("Firebase is not enabled. Saving Pokémon is disabled.");
+            return;
+          }
           if (!selectedForManualAdd || !selectedTeam || !manualAddDate) {
             alert("Please select a Pokémon, team, and date");
             return;
@@ -600,10 +733,9 @@
                     </div>
                   )}
 
-                  <p className="text-gray-600 text-sm mb-4">
-                    {selectedTeam
-                      ? "Team selected! Each team tracks its own Pokémon history."
-                      : "First, select or create a team. Each team tracks its own Pokémon history."}
+                  <p className="text-xs text-gray-500 mb-4">
+                    Tip: Click a team tile again to deselect. Use the pencil
+                    icon to rename. Use the trash can icon to delete.
                   </p>
 
                   <div className="flex gap-2 mb-4">
@@ -627,23 +759,135 @@
                     {teams.map((team) => (
                       <div
                         key={team.id}
-                        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
+                        className={`p-3 rounded-lg cursor-pointer transition ${
                           selectedTeam === team.id
                             ? "bg-blue-100 border-2 border-blue-500"
                             : "bg-gray-50 hover:bg-gray-100"
                         }`}
-                        onClick={() => setSelectedTeam(team.id)}
+                        onClick={(e) => {
+                          // Feature 1: clicking the selected team toggles it off
+                          // Ignore double-clicks so we do not accidentally toggle while renaming
+                          if (e.detail > 1) return;
+                          if (editingTeamId === team.id) return;
+                          setSelectedTeam((prev) =>
+                            prev === team.id ? "" : team.id
+                          );
+                        }}
                       >
-                        <span className="font-medium">{team.name}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteTeam(team.id);
-                          }}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          🗑️
-                        </button>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            {editingTeamId === team.id ? (
+                              <div
+                                className="flex items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="text"
+                                  value={editingTeamName}
+                                  onChange={(e) =>
+                                    setEditingTeamName(e.target.value)
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") saveRenamedTeam();
+                                    if (e.key === "Escape")
+                                      cancelRenamingTeam();
+                                  }}
+                                  autoFocus
+                                  className="flex-1 min-w-0 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                  onClick={saveRenamedTeam}
+                                  disabled={
+                                    isRenameSaving ||
+                                    !(editingTeamName || "").trim() ||
+                                    isTeamNameTaken(
+                                      (editingTeamName || "").trim(),
+                                      team.id
+                                    )
+                                  }
+                                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                  title={
+                                    !(editingTeamName || "").trim()
+                                      ? "Name is required"
+                                      : isTeamNameTaken(
+                                          (editingTeamName || "").trim(),
+                                          team.id
+                                        )
+                                      ? "Name already taken"
+                                      : "Save"
+                                  }
+                                >
+                                  {isRenameSaving ? "Saving..." : "Save"}
+                                </button>
+                                <button
+                                  onClick={cancelRenamingTeam}
+                                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <span
+                                className="font-medium truncate block"
+                                title={team.name}
+                              >
+                                {team.name}
+                              </span>
+                            )}
+
+                            {editingTeamId === team.id &&
+                              (isTeamNameTaken(
+                                (editingTeamName || "").trim(),
+                                team.id
+                              ) ||
+                                !(editingTeamName || "").trim()) && (
+                                <p className="mt-2 text-xs text-red-600">
+                                  {!(editingTeamName || "").trim()
+                                    ? "Team name is required."
+                                    : "That team name is already taken."}
+                                </p>
+                              )}
+
+                            {editingTeamId === team.id && !!renameError && (
+                              <p className="mt-2 text-xs text-red-600">
+                                {renameError}
+                              </p>
+                            )}
+                          </div>
+
+                          {editingTeamId !== team.id && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startRenamingTeam(team);
+                                }}
+                                className="text-gray-600 hover:text-gray-900"
+                                title={
+                                  window.demo?.allowWrites
+                                    ? "Rename team"
+                                    : "Read-only demo"
+                                }
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteTeam(team.id);
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                                title={
+                                  window.demo?.allowWrites
+                                    ? "Delete team"
+                                    : "Read-only demo"
+                                }
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -872,7 +1116,7 @@
                                   )}
                                 </div>
                                 <p className="text-xs text-gray-600">
-                                  {entry.teamName}
+                                  {getTeamNameForHistoryEntry(entry)}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   {formatDate(entry.selectedAt)}
@@ -1079,8 +1323,8 @@
                         onChange={(e) => setManualAddDate(e.target.value)}
                         className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        When was this Pokémon used for a sprint?
+                      <p className="text-xs text-gray-500 mb-4">
+                        Please include a sprint date to manually add Pokémon.
                       </p>
                     </div>
 
