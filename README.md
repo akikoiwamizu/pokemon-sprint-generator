@@ -3,7 +3,7 @@
 ![Release](https://img.shields.io/github/v/release/akikoiwamizu/pokemon-sprint-generator?sort=semver)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A public, read-only version of the internal **Pokémon Sprint Name Generator** I originally built to make sprint planning more engaging for engineering teams.
+A public, read-only version of the internal **Pokémon Sprint Name Generator** I built to make sprint planning more engaging for engineering teams.
 
 This demo is designed to be safe to publish: it runs as a static site, loads demo data from JSON, and intentionally disables write operations. Forks can enable persistence by configuring their own Firebase project and rules.
 
@@ -28,18 +28,22 @@ pokemon-sprint-generator/
 │   │   ├── teams.json
 │   │   └── sprint_history.json
 │   ├── config.example.js
-│   ├── index.html
-│   └── ...
+│   ├── favicon.png
+│   └── index.html
 ├── docs/
 │   └── images/
 │       └── app.png
 ├── .github/
 │   ├── ISSUE_TEMPLATE/
+│   ├── workflows/
+│   ├── dependabot.yml
 │   └── pull_request_template.md
+├── firebase.rc
 ├── firebase.json
 ├── firestore.rules
 ├── firestore.rules.example
 ├── LICENSE
+└── CHANGELOG.md
 └── README.md
 ```
 
@@ -158,7 +162,7 @@ If you enable Firebase in a fork, use least-privilege rules and require authenti
 
 ## Contributing
 
-Issues and PRs are welcome.
+Issues and PRs are welcome!
 
 - Bug reports: please include repro steps and screenshots if relevant
 - Feature requests: describe the intended behavior and why it matters

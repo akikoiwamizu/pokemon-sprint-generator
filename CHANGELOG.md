@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.0.0] - 2026-01-18
+
+### Added
+
+- Public read-only demo mode backed by static JSON data
+- Team mode support (team selection and history grouping)
+- Team deselect by clicking the selected team again
+- Team rename UI (enabled only when writes are enabled in forks)
+- Fork guide for enabling Firebase persistence and rules
+
+### Security
+
+- Default Firestore rules are read-only
+- Example Firestore rules included to enable persistence
+
 ## [v0.10] - 2025-10-24
 
 ### Highlights
