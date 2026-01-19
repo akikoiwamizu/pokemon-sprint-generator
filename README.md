@@ -1,7 +1,6 @@
 # Pokémon Sprint Name Generator (Public Demo)
 
 ![Release](https://img.shields.io/github/v/release/akikoiwamizu/pokemon-sprint-generator?sort=semver)
-![Project Status](https://img.shields.io/badge/status-public%20launch%20prep-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A public, read-only version of the internal **Pokémon Sprint Name Generator** I originally built to make sprint planning more engaging for engineering teams.
@@ -128,7 +127,7 @@ To enable Team Mode writes in your Firebase project:
 Rule requirements by feature:
 
 - Create team: allow create on `/teams/{teamId}`
-- Rename team: allow update on `/teams/{teamId}` for `teamName` only
+- Rename team: allow update on `/teams/{teamId}` for `name` only
 - Save sprint history: allow create on `/sprintHistory/{historyId}`
 
 Example Firestore documents (one possible approach):
